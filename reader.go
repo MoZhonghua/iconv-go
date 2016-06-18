@@ -5,6 +5,8 @@ import (
 	"syscall"
 )
 
+const bufferSize = 8 * 1024
+
 type Reader struct {
 	source            io.Reader
 	converter         *Converter
@@ -33,12 +35,12 @@ func NewReaderFromConverter(source io.Reader, converter *Converter) (reader *Rea
 	reader.converter = converter
 
 	// create 8K buffers
-	reader.buffer = make([]byte, 8*1024)
+	reader.buffer = make([]byte, bufferSize)
 
 	return reader
 }
 
-func (this *Reader) fillBuffer() {
+func (this *Reader) fillBuffer() int {
 	// slide existing data to beginning
 	if this.readPos > 0 {
 		// copy current bytes - is this guaranteed safe?
@@ -58,6 +60,9 @@ func (this *Reader) fillBuffer() {
 	// track any reader error / EOF
 	if err != nil {
 		this.err = err
+		return -1
+	} else {
+		return bytesRead
 	}
 }
 
@@ -85,6 +90,18 @@ func (this *Reader) Read(p []byte) (n int, err error) {
 
 	// if we experienced an iconv error, check it
 	if err != nil {
+		// EINVAL:
+		// An incomplete multibyte sequence is encountered in the input,
+		// and the input byte sequence terminates after it.
+		if err == syscall.EINVAL {
+			// If we can read new data, then this should NOT be
+			// considered as an error.
+			newData := this.fillBuffer()
+			if newData > 0 {
+				return n, nil
+			}
+		}
+
 		// E2BIG errors can be ignored (we'll get them often) as long
 		// as at least 1 byte was written. If we experienced an E2BIG
 		// and no bytes were written then the buffer is too small for
