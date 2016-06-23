@@ -7,6 +7,7 @@ import (
 
 const bufferSize = 8 * 1024
 
+// This implements io.ReadCloser interface
 type Reader struct {
 	source            io.Reader
 	converter         *Converter
@@ -62,6 +63,11 @@ func (this *Reader) fillBuffer() int {
 		this.err = err
 	}
 	return bytesRead
+}
+
+// Must be called to free memory
+func (this *Reader) Close() error {
+	return this.converter.Close()
 }
 
 // implement the io.Reader interface
