@@ -60,10 +60,8 @@ func (this *Reader) fillBuffer() int {
 	// track any reader error / EOF
 	if err != nil {
 		this.err = err
-		return -1
-	} else {
-		return bytesRead
 	}
+	return bytesRead
 }
 
 // implement the io.Reader interface
