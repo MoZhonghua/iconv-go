@@ -107,6 +107,13 @@ func (this *Reader) Read(p []byte) (n int, err error) {
 		if err != syscall.E2BIG || bytesWritten == 0 {
 			// track anything else
 			this.err = err
+		} else {
+			// Should not return this.err
+			// If we got EOF from source in last fillBuffer() call, and
+			// there is still more data to process in buffer, in this
+			// case, if we return this.err(=EOF), then data in buffer
+			// will be lost.
+			return n, nil
 		}
 	}
 
